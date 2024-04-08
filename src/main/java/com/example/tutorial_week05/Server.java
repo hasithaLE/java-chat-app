@@ -15,6 +15,7 @@ public class Server {
     /* PORT and EXIT_COMMAND are private static final variables. They are constants used to specify the server's port and the command to exit the chat. */
     private static final int PORT = 12345;
     private static final String EXIT_COMMAND = "exit";
+    private static final String privateMessageIndicator = "/pm";
 
     /* clients and clientNames are private static List variables. They are used to keep track of the connected clients and their names. */
     private static List<Socket> clients = new ArrayList<>();
@@ -24,7 +25,7 @@ public class Server {
     public static void main(String[] args) throws IOException {
         /* A new ServerSocket object named 'serverSocket' is created to listen for client connections on the specified port. */
         ServerSocket serverSocket = new ServerSocket(PORT);
-        
+
         /* A message is printed to the console indicating the server has started. */
         System.out.println("Server has Started on port: " + PORT);
 
@@ -32,12 +33,12 @@ public class Server {
         while (true) {
             /* A new Socket object named 'clientSocket' is created when a client connects to the server. */
             Socket clientSocket = serverSocket.accept();
-            
+
             /* The new client's socket is added to the list of clients. */
             clients.add(clientSocket);
 
             /* A new Thread is created to handle the connected client. The 'handleClient' method is passed as the task for the thread. */
-            Thread thread = new Thread(()->handleClient(clientSocket));
+            Thread thread = new Thread(() -> handleClient(clientSocket));
             /* The thread is started, which invokes the 'handleClient' method. */
             thread.start();
         }
@@ -57,7 +58,7 @@ public class Server {
 
             /* The client is asked to enter their name. */
             output.println("Enter your name: ");
-            
+
             /* The client's name is read from the input and added to the list of 
             client names. */
             String name = input.readLine();
@@ -68,22 +69,26 @@ public class Server {
             /* The connection message is printed to the console and broadcasted to all other clients. */
             System.out.println(message);
             broadcastMessage(message, clientSocket);
-
-            
             String clientMessage;
             /* This is a loop where the server continuously reads messages 
             from the client. */
-            while((clientMessage = input.readLine()) != null) {
+            while ((clientMessage = input.readLine()) != null) {
                 /* If the client sends the exit command, the loop breaks 
                 and the client is disconnected. */
                 if (clientMessage.equalsIgnoreCase(EXIT_COMMAND)) {
                     break;
                 }
-
+                if (clientMessage.startsWith(privateMessageIndicator)){
+                    String messageParts[] = clientMessage.split(" ",3);
+                    String recieverName = messageParts[1];
+                    String privateMsg = messageParts[2];
+                    privateMessage(name,recieverName,privateMsg);
+                }else{
                 /* The client's message is prefixed with their name and broadcasted to all other clients. */
                 message = name + ": " + clientMessage;
                 System.out.println(message);
                 broadcastMessage(message, clientSocket);
+                }
             }
 
             /* When the client disconnects, they are removed from the list of 
@@ -97,9 +102,9 @@ public class Server {
             broadcastMessage(message, null);
 
             /* All resources are closed after use. */
-            input.close();
-            output.close();
-            clientSocket.close();
+//            input.close();
+//            output.close();
+//            clientSocket.close();
         } catch (IOException e) {
             /* Any IOExceptions are caught and their stack trace is printed to the console. */
             e.printStackTrace();
@@ -109,11 +114,11 @@ public class Server {
     /* The 'broadcastMessage' method is a private static method that takes a 
     String called message and a Socket as arguments called excludeClient. It sends the message to all connected 
     clients, excluding the client whose socket is passed as the second argument. */
-    private static void broadcastMessage(String message, Socket excludeClient){
+    private static void broadcastMessage(String message, Socket excludeClient) {
         /* This is a loop that iterates over all connected clients. */
         for (Socket client : clients) {
             /* If the current client is not the excluded client, the message is sent to them. */
-            if (client != excludeClient){
+            if (client != excludeClient) {
                 try {
                     /* A PrintWriter object named 'output' is created to send data to the client. It is initialized with the output stream of the client's socket. The second argument 'true' passed to the PrintWriter indicates that the PrintWriter should automatically flush its buffer after every write operation. */
                     PrintWriter output = new PrintWriter(client.getOutputStream(), true);
@@ -124,6 +129,20 @@ public class Server {
                     e.printStackTrace();
                 }
             }
+        }
+    }
+    private  static void privateMessage(String clientName, String recieverName, String privateMsg){
+        int recieverIndex = clientNames.indexOf(recieverName);
+        if (recieverIndex != -1){
+            Socket recieverSocketDetails = clients.get(recieverIndex);
+            try (PrintWriter outputMessage = new PrintWriter(recieverSocketDetails.getOutputStream(), true)){
+                String message = "Private message from " + clientName + " to " + recieverName + ": " + privateMsg;
+                outputMessage.println(message);
+            } catch (IOException e) {
+               e.printStackTrace();
+            }
+        }else{
+            System.out.println("User " + recieverName + " not found."); 
         }
     }
 
