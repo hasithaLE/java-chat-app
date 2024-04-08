@@ -7,6 +7,8 @@ package com.example.tutorial_week05;
 import java.io.*;
 import java.net.*;
 import java.util.Scanner;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /* This is a public class named Client. */
 public class Client {
@@ -14,6 +16,7 @@ public class Client {
     /* HOST and PORT are private static final variables. They are constants used to specify the server's address and port. */
     private static final String HOST = "localhost";
     private static final int PORT = 12345;
+    private static final Logger logs = Logger.getLogger(Client.class.getName());
 
     /* The main method is the entry point of any Java application. The 'throws IOException' clause indicates that this method may throw an IOException. */
     public static void main(String[] args) throws IOException {
@@ -35,12 +38,26 @@ public class Client {
         String name = scanner.nextLine();
         /* The client's name is sent to the server. */
         output.println(name);
+        
+        Thread serverListener = new Thread(() -> {
+                try {
+                    /* This is a loop where the client continuously reads messages from the server and prints them to the console. */
+                    String serverMessage;
+                    while ((serverMessage = input.readLine()) != null) {
+                        System.out.println(serverMessage);
+                    }
+                } catch (IOException e) {
+                    /* Any IOExceptions are caught and their stack trace is printed to the console. */
+                    logs.log(Level.SEVERE, "Error is Encountered in main Method" + e);
+                }
+            });
+            serverListener.start();
 
         /* This is a loop where the client can continuously enter and send messages to the server. */
         String message;
         while (true) {
             /* The client is prompted to enter a message. */
-            System.out.println("Enter your message (type 'exit' to leave):");
+            System.out.println("Enter your message (type 'exit' to leave or '/pm [name] [message]' for private chat): ");
             /* The String variable 'message' is declared and initialized with the next line of input from the scanner. */
             message = scanner.nextLine();
             /* The message is sent to the server. */
